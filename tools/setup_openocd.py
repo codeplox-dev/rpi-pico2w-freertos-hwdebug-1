@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build OpenOCD from source (required for RP2350 support)."""
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -18,6 +19,10 @@ def get_nproc() -> int:
 
 def main() -> int:
     """Main entry point."""
+    parser = argparse.ArgumentParser(description="Build OpenOCD from source")
+    parser.add_argument("--version", required=True, help="OpenOCD version tag (e.g., v0.9.0) or commit hash")
+    args = parser.parse_args()
+
     local_dir = get_local_dir()
     openocd_bin = local_dir / "bin" / "openocd"
     src_dir = local_dir / "src"
@@ -33,7 +38,7 @@ def main() -> int:
             pass
         return 0
 
-    print("Building OpenOCD from source...")
+    print(f"Building OpenOCD {args.version} from source...")
 
     # Create directories
     src_dir.mkdir(parents=True, exist_ok=True)
@@ -44,9 +49,13 @@ def main() -> int:
     if not openocd_src.exists():
         print("Cloning OpenOCD repository...")
         run_cmd([
-            "git", "clone", "--depth", "1",
+            "git", "clone",
             "https://github.com/openocd-org/openocd.git"
         ], cwd=src_dir)
+
+        # Checkout the specific version
+        print(f"Checking out version {args.version}...")
+        run_cmd(["git", "checkout", args.version], cwd=openocd_src)
 
     # Bootstrap
     print("Running bootstrap...")

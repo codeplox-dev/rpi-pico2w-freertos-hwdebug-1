@@ -32,8 +32,8 @@ def clone_pico_sdk(version: str) -> bool:
     return True
 
 
-def clone_freertos_kernel() -> bool:
-    """Clone the FreeRTOS Kernel (Raspberry Pi fork) if not already present."""
+def clone_freertos_kernel(version: str) -> bool:
+    """Clone the FreeRTOS Kernel (Raspberry Pi fork) at a specific version/commit."""
     deps_dir = get_deps_dir()
     freertos_dir = deps_dir / "FreeRTOS-Kernel"
 
@@ -41,11 +41,16 @@ def clone_freertos_kernel() -> bool:
         print(f"FreeRTOS Kernel already exists at {freertos_dir}")
         return True
 
-    print("Cloning FreeRTOS Kernel (Raspberry Pi fork)...")
+    print(f"Cloning FreeRTOS Kernel (Raspberry Pi fork) at {version}...")
+    # Clone without depth limit to allow checkout of specific commits
     run_cmd([
-        "git", "clone", "--depth", "1",
+        "git", "clone",
         "https://github.com/raspberrypi/FreeRTOS-Kernel.git"
     ], cwd=deps_dir)
+
+    # Checkout the specific version (tag or commit hash)
+    print(f"Checking out version {version}...")
+    run_cmd(["git", "checkout", version], cwd=freertos_dir)
 
     return True
 
@@ -134,8 +139,9 @@ def copy_cmake_imports() -> bool:
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Setup Pico SDK, FreeRTOS Kernel, and picotool")
-    parser.add_argument("--sdk-version", required=True, help="Pico SDK version (e.g., 2.2.0)")
-    parser.add_argument("--picotool-version", default=None, help="picotool version (defaults to SDK version)")
+    parser.add_argument("--sdk-version", required=True, help="Pico SDK version tag (e.g., 2.2.0)")
+    parser.add_argument("--freertos-version", required=True, help="FreeRTOS Kernel version (tag or commit hash)")
+    parser.add_argument("--picotool-version", default=None, help="picotool version tag (defaults to SDK version)")
     args = parser.parse_args()
 
     # Default picotool version to SDK version
@@ -149,7 +155,7 @@ def main() -> int:
 
     try:
         clone_pico_sdk(args.sdk_version)
-        clone_freertos_kernel()
+        clone_freertos_kernel(args.freertos_version)
         build_picotool(picotool_version)
         copy_cmake_imports()
 

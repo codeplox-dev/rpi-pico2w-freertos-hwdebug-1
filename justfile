@@ -1,6 +1,27 @@
 # Pico 2 W WiFi Scanner - Build and Development
 
+# =============================================================================
+# Dependency Versions (override with: just --set pico_sdk_version "2.3.0" setup)
+# =============================================================================
+
+# Pico SDK - https://github.com/raspberrypi/pico-sdk/tags
 pico_sdk_version := "2.2.0"
+
+# FreeRTOS Kernel (Raspberry Pi fork) - https://github.com/raspberrypi/FreeRTOS-Kernel
+# No tags available; using commit hash from main branch
+freertos_kernel_version := "4f7299d6ea746b27a9dd19e87af568e34bd65b15"
+
+# OpenOCD - https://github.com/openocd-org/openocd/tags
+openocd_version := "v0.9.0"
+
+# picotool - https://github.com/raspberrypi/picotool/tags
+# Usually matches SDK version
+picotool_version := "2.2.0"
+
+# =============================================================================
+# Project paths
+# =============================================================================
+
 project_dir := justfile_directory()
 
 # SDK paths (override any conflicting environment variables)
@@ -16,8 +37,8 @@ default:
 
 # Setup development environment (SDK, FreeRTOS, OpenOCD)
 setup:
-    ./tools/setup_sdk.py --sdk-version {{pico_sdk_version}}
-    ./tools/setup_openocd.py
+    ./tools/setup_sdk.py --sdk-version {{pico_sdk_version}} --freertos-version {{freertos_kernel_version}} --picotool-version {{picotool_version}}
+    ./tools/setup_openocd.py --version {{openocd_version}}
 
 # Setup VSCode IDE
 setup-vscode:

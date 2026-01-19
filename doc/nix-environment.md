@@ -188,6 +188,14 @@ Run `direnv allow` to trust the project's `.envrc`.
 
 The first `nix develop` or `direnv allow` downloads and builds packages. Subsequent loads use cached packages.
 
+### Checking disk usage
+
+To see how much disk space the Nix environment uses:
+
+```bash
+du -sh $(nix flake metadata github:NixOS/nixpkgs --json | jq -r '.path')
+```
+
 ### "experimental feature 'flakes' is disabled"
 
 Add to `~/.config/nix/nix.conf`:
