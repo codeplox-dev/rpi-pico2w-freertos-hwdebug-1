@@ -1,6 +1,6 @@
 # Pico 2 W FreeRTOS w/ Debug Probe
 
-This project demonstrates project setup and tooling for the Pico 2 W running FreeRTOS. It uses the [Official Debug Probe])(https://www.raspberrypi.com/documentation/microcontrollers/debug-probe.html) for flashing and hardware debugging. Note that you can use this build system without the dedicated debugger by building a `.uf2` file and copying it to the Pico's storage, but the specifics of this are left to the interested reader.
+This project demonstrates project setup and tooling for the Pico 2 W running FreeRTOS. It uses the [Official Debug Probe](https://www.raspberrypi.com/documentation/microcontrollers/debug-probe.html) for flashing and hardware debugging. Note that you can use this build system without the dedicated debugger by building a `.uf2` file and copying it to the Pico's storage, but the specifics of this are left to the interested reader.
 
 The project can be used from the CLI entirely, but there is also support for setting up VSCode for debugging.
 
@@ -28,6 +28,8 @@ Storage requirements: the dedicated Pico tooling and sources total about 600MB. 
 - Raspberry Pi Pico 2 W + Debug Probe (or any CMSIS-DAP debugger)
 - Nix (flakes enabled) and direnv — see **[Nix Environment Guide](doc/nix-environment.md)** for setup and portability
 
+On Linux, `just setup` automatically installs udev rules and adds your user to the `dialout` and `plugdev` groups for USB device access. You'll need to log out and back in after the first setup for group changes to take effect.
+
 ## Quick Start
 
 ```bash
@@ -38,7 +40,7 @@ cd rpi-pico2w-freertos-hwdebug-1
 # Load nix environment
 direnv allow
 
-# First-time setup (SDK, FreeRTOS, OpenOCD)
+# First-time setup
 just setup
 
 # Build and flash
@@ -71,7 +73,7 @@ Scanning every 20 seconds...
 
 | Command | Description |
 |---------|-------------|
-| `just setup` | First-time setup (SDK, FreeRTOS, OpenOCD) |
+| `just setup` | First-time setup (SDK, FreeRTOS, OpenOCD, udev) |
 | `just build` | Build the application |
 | `just flash` | Flash to device via debug probe |
 | `just run` | Build and flash |
@@ -117,13 +119,15 @@ justfile              # Command runner
 
 **No serial output:** Ensure Pico USB is connected (not just debug probe). Wait a few seconds after flash for USB enumeration.
 
-**Flash fails:** Check debug probe connection.
+**Flash fails with "unable to find CMSIS-DAP device":** On Linux, this is usually a USB permissions issue. Re-run `just setup` to install udev rules, then log out and back in for group changes to take effect. If the problem persists, verify the debug probe is connected with `lsusb | grep 2e8a`.
 
 **IntelliSense errors:** Run `just build` to generate `compile_commands.json`, then reload VSCode.
 
 ## Technical Details
 
-- **MCU:** RP2350 (dual Cortex-M33, 150 MHz)
+- **MCU:** RP2350 dual Cortex-M33 at 150 MHz (Core 0 only; Core 1 and RISC-V cores idle)
+- **Threading:** FreeRTOS preemptive scheduler; two tasks coordinate via task notifications
 - **WiFi:** CYW43439 via FreeRTOS lwIP integration
 - **SDK:** Pico SDK 2.2.0, FreeRTOS with tickless idle
-- **Debug:** OpenOCD (built from source for RP2350 support)
+
+See **[Hardware Overview](doc/hardware.md)** for details on the RP2350's dual-architecture cores, PIO capabilities, and power characteristics.

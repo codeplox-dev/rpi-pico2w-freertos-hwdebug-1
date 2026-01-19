@@ -50,7 +50,7 @@ def main() -> int:
         print("Cloning OpenOCD repository...")
         run_cmd([
             "git", "clone",
-            "https://github.com/openocd-org/openocd.git"
+            "https://github.com/raspberrypi/openocd.git"
         ], cwd=src_dir)
 
         # Checkout the specific version

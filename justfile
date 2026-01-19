@@ -11,8 +11,8 @@ pico_sdk_version := "2.2.0"
 # No tags available; using commit hash from main branch
 freertos_kernel_version := "4f7299d6ea746b27a9dd19e87af568e34bd65b15"
 
-# OpenOCD - https://github.com/openocd-org/openocd/tags
-openocd_version := "v0.9.0"
+# OpenOCD - https://github.com/raspberrypi/openocd/tags (Raspberry Pi fork with RP2350 support)
+openocd_version := "sdk-2.2.0"
 
 # picotool - https://github.com/raspberrypi/picotool/tags
 # Usually matches SDK version
@@ -35,10 +35,11 @@ default:
 # Setup
 # =============================================================================
 
-# Setup development environment (SDK, FreeRTOS, OpenOCD)
+# Setup development environment (SDK, FreeRTOS, OpenOCD, udev rules)
 setup:
     ./tools/setup_sdk.py --sdk-version {{pico_sdk_version}} --freertos-version {{freertos_kernel_version}} --picotool-version {{picotool_version}}
     ./tools/setup_openocd.py --version {{openocd_version}}
+    ./tools/setup_udev.py
 
 # Setup VSCode IDE
 setup-vscode:
