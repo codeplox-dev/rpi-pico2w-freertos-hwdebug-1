@@ -1,4 +1,4 @@
-# Pico 2 W FreeRTOS w/ Debug Probe
+# Raspberry Pi Pico 2 W FreeRTOS w/ Debug Probe
 
 This project demonstrates project setup and tooling for the Pico 2 W running FreeRTOS. It uses the [Official Debug Probe])(https://www.raspberrypi.com/documentation/microcontrollers/debug-probe.html) for flashing and hardware debugging. Note that you can use this build system without the dedicated debugger by building a `.uf2` file and copying it to the Pico's storage, but the specifics of this are left to the interested reader.
 
