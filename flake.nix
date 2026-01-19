@@ -32,8 +32,7 @@
             jimtcl
             capstone
 
-            # Debug/console tools
-            picocom
+            # Debug tools
             gdb
 
             # Code quality

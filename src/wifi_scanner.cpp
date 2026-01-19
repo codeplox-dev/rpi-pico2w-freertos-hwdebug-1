@@ -11,6 +11,7 @@
 #include "task.h"
 #include "semphr.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace {
@@ -36,27 +37,26 @@ ScanResult* g_result_ptr = nullptr;
 int scan_result_callback(void* env, const cyw43_ev_scan_result_t* result) {
     if (!result) return 0;
 
-    ScanResult* scan_result = static_cast<ScanResult*>(env);
+    auto* scan_result = static_cast<ScanResult*>(env);
     if (!scan_result || scan_result->is_full()) return 0;
 
     APInfo ap;
 
-    // Copy SSID (with bounds check)
-    size_t ssid_len = result->ssid_len;
-    if (ssid_len > MAX_SSID_LEN) ssid_len = MAX_SSID_LEN;
-    std::memcpy(ap.ssid, result->ssid, ssid_len);
+    // Copy SSID (with bounds check using std::min)
+    const auto ssid_len = std::min(static_cast<std::size_t>(result->ssid_len), MAX_SSID_LEN);
+    std::memcpy(ap.ssid.data(), result->ssid, ssid_len);
     ap.ssid[ssid_len] = '\0';
 
     // Skip hidden networks (empty SSID)
     if (ap.ssid[0] == '\0') return 0;
 
     // Copy remaining fields
-    std::memcpy(ap.bssid, result->bssid, BSSID_LEN);
+    std::memcpy(ap.bssid.data(), result->bssid, BSSID_LEN);
     ap.rssi = result->rssi;
     ap.channel = result->channel;
     ap.auth = auth_mode_from_cyw43(result->auth_mode);
 
-    scan_result->add(ap);
+    [[maybe_unused]] const bool added = scan_result->add(ap);
     return 0;
 }
 
@@ -68,8 +68,8 @@ void do_scan(ScanResult* result) {
 
     led::start_blink(LED_BLINK_INTERVAL_MS);
 
-    cyw43_wifi_scan_options_t scan_options;
-    std::memset(&scan_options, 0, sizeof(scan_options));
+    // Use brace initialization instead of memset
+    cyw43_wifi_scan_options_t scan_options{};
 
     int err = cyw43_wifi_scan(&cyw43_state, &scan_options, result, scan_result_callback);
     if (err != 0) {
@@ -90,7 +90,7 @@ void do_scan(ScanResult* result) {
  * @brief Scanner task - waits for requests and performs scans.
  */
 void scanner_task(void* params) {
-    (void)params;
+    static_cast<void>(params);
 
     while (true) {
         if (xSemaphoreTake(g_request_sem, portMAX_DELAY) == pdTRUE) {
@@ -107,7 +107,7 @@ void scanner_task(void* params) {
 
 namespace wifi {
 
-bool init() {
+[[nodiscard]] bool init() {
     if (cyw43_arch_init()) {
         return false;
     }
@@ -115,7 +115,7 @@ bool init() {
     return true;
 }
 
-bool start_scanner_task() {
+[[nodiscard]] bool start_scanner_task() {
     g_request_sem = xSemaphoreCreateBinary();
     g_complete_sem = xSemaphoreCreateBinary();
 
@@ -135,7 +135,7 @@ bool start_scanner_task() {
     return ret == pdPASS;
 }
 
-bool request_scan(ScanResult* result, uint32_t timeout_ms) {
+[[nodiscard]] bool request_scan(ScanResult* result, uint32_t timeout_ms) {
     if (!result || !g_request_sem || !g_complete_sem) {
         return false;
     }

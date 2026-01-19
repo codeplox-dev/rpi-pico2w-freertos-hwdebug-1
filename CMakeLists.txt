@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
 
+# Generate compile_commands.json for IDE integration
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Set board before importing SDK
 set(PICO_BOARD pico2_w)
 
@@ -13,7 +16,8 @@ include(FreeRTOS_Kernel_import.cmake)
 project(wifi_scanner C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Initialize the Pico SDK
 pico_sdk_init()
