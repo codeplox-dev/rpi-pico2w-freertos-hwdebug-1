@@ -22,7 +22,7 @@ The 3-wire debug cable connects the Debug Probe's **D** (debug) port to the Pico
 
 ```bash
 # Clone and enter directory
-git clone <repo-url>
+git clone https://github.com/codeplox-dev/rpi-pico2w-freertos-hwdebug-1.git
 cd rpi-pico2w-freertos-hwdebug-1
 
 # Load nix environment
