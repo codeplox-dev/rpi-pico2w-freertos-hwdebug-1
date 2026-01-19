@@ -19,7 +19,7 @@ The 3-wire debug cable connects the Debug Probe's **D** (debug) port to the Pico
 
 ## Workstation Software Setup
 
-The portable Nix environment and toolchain setup scripts in `tools/` provide a consistent native runtime environment across platforms. The system is tested on macOS with Apple Silicon, Linux amd64, and Raspberry Pi 64-bit running Raspbian Bookworm or Ubuntu 24.10.
+The portable Nix environment and toolchain setup scripts in `tools/` provide a consistent native runtime environment across platforms. The system is tested on macOS with Apple Silicon, Linux amd64, and Raspberry Pi 64-bit running Ubuntu 24.04.
 
 Storage requirements: the dedicated Pico tooling and sources total about 600MB. The reusable Nix environment adds about 300MB.
 
