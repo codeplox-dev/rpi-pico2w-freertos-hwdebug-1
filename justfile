@@ -40,12 +40,16 @@ flash:
 run: build flash
 
 # =============================================================================
-# Serial
+# Serial & RTT
 # =============================================================================
 
 # Read serial output (forever if no duration, or for N seconds)
 serial-read duration="":
     ./tools/pico.py serial-read {{duration}}
+
+# Read RTT output via debug probe (forever if no duration, or for N seconds)
+rtt-read duration="":
+    ./tools/pico.py rtt-read {{duration}}
 
 # =============================================================================
 # Testing

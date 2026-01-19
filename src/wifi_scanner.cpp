@@ -5,6 +5,7 @@
 
 #include "wifi_scanner.hpp"
 #include "led.hpp"
+#include "debug_log.hpp"
 
 #include "pico/cyw43_arch.h"
 #include "FreeRTOS.h"
@@ -64,6 +65,7 @@ int scan_result_callback(void* env, const cyw43_ev_scan_result_t* result) {
  * @brief Perform a single WiFi scan.
  */
 void do_scan(ScanResult* result) {
+    DBG_INFO("WiFi", "Scan starting");
     result->reset();
 
     led::start_blink(LED_BLINK_INTERVAL_MS);
@@ -73,17 +75,20 @@ void do_scan(ScanResult* result) {
 
     int err = cyw43_wifi_scan(&cyw43_state, &scan_options, result, scan_result_callback);
     if (err != 0) {
+        DBG_ERROR("WiFi", "cyw43_wifi_scan failed: %d", err);
         led::stop_blink();
         result->error_code = err;
         return;
     }
 
+    DBG_INFO("WiFi", "Scan initiated, polling for completion");
     while (cyw43_wifi_scan_active(&cyw43_state)) {
         vTaskDelay(pdMS_TO_TICKS(SCAN_POLL_INTERVAL_MS));
     }
 
     led::stop_blink();
     result->success = true;
+    DBG_INFO("WiFi", "Scan finished: %u APs found", result->count);
 }
 
 /**
@@ -92,13 +97,16 @@ void do_scan(ScanResult* result) {
 void scanner_task(void* params) {
     static_cast<void>(params);
 
+    DBG_INFO("WiFi", "Scanner task started, waiting for requests");
     while (true) {
         if (xSemaphoreTake(g_request_sem, portMAX_DELAY) == pdTRUE) {
+            DBG_INFO("WiFi", "Scan request received");
             ScanResult* result = g_result_ptr;
             if (result) {
                 do_scan(result);
             }
             xSemaphoreGive(g_complete_sem);
+            DBG_INFO("WiFi", "Scan request completed, signaled caller");
         }
     }
 }
@@ -108,21 +116,30 @@ void scanner_task(void* params) {
 namespace wifi {
 
 [[nodiscard]] bool init() {
+    DBG_INFO("WiFi", "Initializing CYW43 architecture");
     if (cyw43_arch_init()) {
+        DBG_ERROR("WiFi", "cyw43_arch_init failed");
         return false;
     }
+    DBG_INFO("WiFi", "Enabling station mode");
     cyw43_arch_enable_sta_mode();
+    DBG_INFO("WiFi", "CYW43 initialization complete");
     return true;
 }
 
 [[nodiscard]] bool start_scanner_task() {
+    DBG_INFO("WiFi", "Creating scanner semaphores");
     g_request_sem = xSemaphoreCreateBinary();
     g_complete_sem = xSemaphoreCreateBinary();
 
     if (!g_request_sem || !g_complete_sem) {
+        DBG_ERROR("WiFi", "Failed to create semaphores");
         return false;
     }
 
+    DBG_INFO("WiFi", "Creating scanner task (stack=%lu, priority=%lu)",
+             static_cast<unsigned long>(SCANNER_STACK_SIZE),
+             static_cast<unsigned long>(SCANNER_PRIORITY));
     BaseType_t ret = xTaskCreate(
         scanner_task,
         "wifi_scan",
@@ -132,6 +149,9 @@ namespace wifi {
         nullptr
     );
 
+    if (ret != pdPASS) {
+        DBG_ERROR("WiFi", "xTaskCreate failed");
+    }
     return ret == pdPASS;
 }
 

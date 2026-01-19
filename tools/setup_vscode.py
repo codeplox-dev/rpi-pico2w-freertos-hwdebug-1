@@ -33,7 +33,14 @@ def get_vscode_configs() -> dict:
                     "openOCDLaunchCommands": ["adapter speed 4000"],
                     "svdFile": "${workspaceFolder}/deps/pico-sdk/src/rp2350/hardware_regs/rp2350.svd",
                     "runToEntryPoint": "main",
-                    "preLaunchTask": "Build"
+                    "preLaunchTask": "Build",
+                    "rttConfig": {
+                        "enabled": True,
+                        "address": "auto",
+                        "decoders": [
+                            {"label": "RTT", "port": 0, "type": "console"}
+                        ]
+                    }
                 },
                 {
                     "name": "Attach",
@@ -49,7 +56,14 @@ def get_vscode_configs() -> dict:
                         "target/rp2350.cfg"
                     ],
                     "openOCDLaunchCommands": ["adapter speed 4000"],
-                    "svdFile": "${workspaceFolder}/deps/pico-sdk/src/rp2350/hardware_regs/rp2350.svd"
+                    "svdFile": "${workspaceFolder}/deps/pico-sdk/src/rp2350/hardware_regs/rp2350.svd",
+                    "rttConfig": {
+                        "enabled": True,
+                        "address": "auto",
+                        "decoders": [
+                            {"label": "RTT", "port": 0, "type": "console"}
+                        ]
+                    }
                 }
             ]
         },

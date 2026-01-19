@@ -23,6 +23,12 @@ from common import get_project_dir, get_local_dir
 DEFAULT_BAUD = 115200
 GDB_PORT = 3333
 TELNET_PORT = 4444
+TCL_PORT = 6666
+RTT_PORT = 9090
+
+# RTT memory search range (covers all SRAM on RP2350)
+RTT_START_ADDR = 0x20000000
+RTT_SIZE = 0x80000  # 512KB
 
 
 def get_openocd_path() -> Path:
@@ -600,6 +606,138 @@ def cmd_serial_read(duration: Optional[int] = None, device: Optional[str] = None
 
 
 # =============================================================================
+# RTT Commands
+# =============================================================================
+
+def openocd_rtt_setup() -> tuple[bool, str]:
+    """Configure RTT on a running OpenOCD instance.
+
+    Returns (success, message) tuple.
+    """
+    if not is_port_open(TELNET_PORT):
+        return False, "OpenOCD not running"
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(5.0)
+            s.connect(("localhost", TELNET_PORT))
+
+            # Read banner
+            time.sleep(0.1)
+            s.recv(1024)
+
+            def send_cmd(cmd: str) -> str:
+                s.sendall(f"{cmd}\n".encode())
+                time.sleep(0.2)
+                response = b""
+                s.settimeout(1.0)
+                try:
+                    while True:
+                        chunk = s.recv(4096)
+                        if not chunk:
+                            break
+                        response += chunk
+                except socket.timeout:
+                    pass
+                return response.decode("utf-8", errors="replace")
+
+            # Setup RTT - search for control block in SRAM
+            out = send_cmd(f'rtt setup {RTT_START_ADDR:#x} {RTT_SIZE:#x} "SEGGER RTT"')
+            if "error" in out.lower():
+                return False, f"RTT setup failed: {out}"
+
+            # Start RTT polling
+            out = send_cmd("rtt start")
+            if "error" in out.lower() and "already" not in out.lower():
+                return False, f"RTT start failed: {out}"
+
+            # Check if RTT server is already running
+            if is_port_open(RTT_PORT):
+                return True, "RTT already configured"
+
+            # Start RTT server on TCP port
+            out = send_cmd(f"rtt server start {RTT_PORT} 0")
+            if "error" in out.lower():
+                return False, f"RTT server start failed: {out}"
+
+            # Wait for server to be ready
+            for _ in range(20):
+                if is_port_open(RTT_PORT):
+                    return True, "RTT configured"
+                time.sleep(0.1)
+
+            return False, "RTT server did not start"
+
+    except (socket.error, OSError) as e:
+        return False, f"Failed to configure RTT: {e}"
+
+
+def cmd_rtt_read(duration: Optional[int] = None) -> int:
+    """Read RTT output from the target via the debug probe.
+
+    RTT (Real-Time Transfer) provides fast bidirectional communication through
+    the debug probe without requiring a USB serial connection. It's especially
+    useful when debugging as output continues even when the target is halted.
+    """
+    # Ensure OpenOCD is running
+    if not is_port_open(TELNET_PORT):
+        print("Starting OpenOCD...", file=sys.stderr)
+        ret = cmd_openocd_start(foreground=False)
+        if ret != 0:
+            return ret
+        # Wait a bit for OpenOCD to fully initialize
+        time.sleep(0.5)
+
+    # Configure RTT
+    print("Configuring RTT...", file=sys.stderr)
+    success, message = openocd_rtt_setup()
+    if not success:
+        print(f"Error: {message}", file=sys.stderr)
+        return 1
+
+    # Connect to RTT server
+    if duration:
+        print(f"Reading RTT output for {duration}s (Ctrl+C to stop)...", file=sys.stderr)
+    else:
+        print(f"Reading RTT output (Ctrl+C to stop)...", file=sys.stderr)
+
+    captured = 0
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.5)
+        sock.connect(("localhost", RTT_PORT))
+
+        end_time = time.time() + duration if duration else None
+        while True:
+            if end_time and time.time() >= end_time:
+                break
+            try:
+                data = sock.recv(4096)
+                if data:
+                    captured += len(data)
+                    sys.stdout.buffer.write(data)
+                    sys.stdout.buffer.flush()
+            except socket.timeout:
+                continue
+
+    except KeyboardInterrupt:
+        pass
+    except ConnectionRefusedError:
+        print(f"Error: Cannot connect to RTT server on port {RTT_PORT}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"\nError: {e}", file=sys.stderr)
+        return 1
+    finally:
+        if sock:
+            sock.close()
+
+    print(f"\nRead {captured} bytes.", file=sys.stderr)
+    return 0
+
+
+# =============================================================================
 # Main
 # =============================================================================
 
@@ -628,6 +766,11 @@ def main() -> None:
                       help="Duration in seconds (omit to read forever)")
     sr_p.add_argument("-d", "--device", help="Serial device")
 
+    # rtt-read (reads RTT output via debug probe)
+    rtt_p = subparsers.add_parser("rtt-read", help="Read RTT output via debug probe")
+    rtt_p.add_argument("duration", nargs="?", type=int, default=None,
+                       help="Duration in seconds (omit to read forever)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -646,6 +789,9 @@ def main() -> None:
 
     elif args.command == "serial-read":
         sys.exit(cmd_serial_read(args.duration, args.device))
+
+    elif args.command == "rtt-read":
+        sys.exit(cmd_rtt_read(args.duration))
 
 
 if __name__ == "__main__":

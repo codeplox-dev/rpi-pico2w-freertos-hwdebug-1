@@ -170,6 +170,92 @@ Run the `Serial Read` task via Command Palette (`Ctrl+Shift+P` → `Tasks: Run T
 
 **Tip:** Serial output requires the firmware to be running. If you don't see output after hitting a breakpoint, press `F5` to continue execution.
 
+## RTT Debug Output
+
+RTT (Real-Time Transfer) is a high-speed debug channel that sends output through the debug probe instead of USB serial. It's faster than UART, works even when USB isn't connected, and continues streaming while single-stepping through code.
+
+### Why Use RTT?
+
+| Feature | USB Serial | RTT |
+|---------|------------|-----|
+| Speed | 115200 baud | ~1 MB/s |
+| Requires USB connection | Yes | No (debug probe only) |
+| Works when target halted | No | Yes |
+| Buffer overflow handling | Blocking | Non-blocking (drops oldest) |
+
+RTT is ideal for:
+- **Debug logging** - High-frequency diagnostic output without slowing down code
+- **Debugging without USB** - When the Pico's USB port is used for other purposes
+- **Timing-sensitive code** - Minimal intrusion compared to serial printf
+
+### Debug Logging Macros
+
+The project includes debug logging macros in `src/debug_log.hpp`:
+
+```c
+DBG_INFO("WiFi", "Scan complete: %u networks", count);
+DBG_WARN("Main", "Buffer nearly full");
+DBG_ERROR("Init", "Failed to initialize: %d", err);
+```
+
+Output includes tick count timestamps:
+```
+[     836] [WiFi] Scan request received
+[     840] [WiFi] Scan starting
+[    1554] [WiFi] Scan finished: 32 APs found
+```
+
+To disable debug output (e.g., for release builds), define before including the header:
+```c
+#define DEBUG_LOG_ENABLED 0
+#include "debug_log.hpp"
+```
+
+### Viewing RTT Output
+
+#### Command Line
+
+```bash
+just rtt-read          # Read forever
+just rtt-read 10       # Read for 10 seconds
+```
+
+This automatically starts OpenOCD if needed, configures RTT, and streams output.
+
+#### VSCode (During Debug Session)
+
+RTT output appears automatically in the **RTT** terminal tab when debugging:
+
+1. Start debugging (`F5`)
+2. Look for the **RTT** tab in the Terminal panel
+3. Debug messages stream in real-time
+
+The debug configurations include RTT support via `rttConfig` in `launch.json`.
+
+#### Manual OpenOCD Control
+
+For advanced use, you can control RTT directly via OpenOCD's telnet interface:
+
+```bash
+# Connect to OpenOCD telnet (port 4444)
+nc localhost 4444
+
+# In telnet session:
+rtt setup 0x20000000 0x80000 "SEGGER RTT"
+rtt start
+rtt server start 9090 0
+
+# Then read from RTT server in another terminal:
+nc localhost 9090
+```
+
+### RTT vs Serial: When to Use Which
+
+- **Use RTT** for debug diagnostics, timing traces, and development logging
+- **Use Serial** for user-facing output, interactive commands, and production data
+
+Both can be used simultaneously—printf output goes to USB serial, UART, and RTT.
+
 ## Running Tests
 
 ### From Terminal

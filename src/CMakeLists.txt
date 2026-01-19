@@ -17,9 +17,10 @@ target_link_libraries(wifi_scanner
     FreeRTOS-Kernel-Heap4
 )
 
-# Enable USB CDC and UART for stdio
+# Enable USB CDC, UART, and RTT for stdio
 pico_enable_stdio_usb(wifi_scanner 1)
 pico_enable_stdio_uart(wifi_scanner 1)
+pico_enable_stdio_rtt(wifi_scanner 1)
 
 # Generate UF2 and other outputs
 pico_add_extra_outputs(wifi_scanner)
