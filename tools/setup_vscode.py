@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Setup VSCode for Pico SDK + FreeRTOS development with OpenOCD debugging."""
 
+import json
 import os
 import shutil
 import sys
@@ -8,6 +9,134 @@ from pathlib import Path
 from typing import List
 
 from common import get_project_dir, get_local_dir, run_cmd_status
+
+
+def get_vscode_configs() -> dict:
+    """Return default VSCode configuration files content."""
+    return {
+        "launch.json": {
+            "version": "0.2.0",
+            "configurations": [
+                {
+                    "name": "Debug",
+                    "type": "cortex-debug",
+                    "request": "launch",
+                    "cwd": "${workspaceFolder}",
+                    "executable": "${workspaceFolder}/build/src/wifi_scanner.elf",
+                    "servertype": "openocd",
+                    "serverpath": "${workspaceFolder}/.local/bin/openocd",
+                    "searchDir": ["${workspaceFolder}/.local/share/openocd/scripts"],
+                    "configFiles": [
+                        "interface/cmsis-dap.cfg",
+                        "target/rp2350.cfg"
+                    ],
+                    "openOCDLaunchCommands": ["adapter speed 4000"],
+                    "svdFile": "${workspaceFolder}/deps/pico-sdk/src/rp2350/hardware_regs/rp2350.svd",
+                    "runToEntryPoint": "main",
+                    "preLaunchTask": "Build"
+                },
+                {
+                    "name": "Attach",
+                    "type": "cortex-debug",
+                    "request": "attach",
+                    "cwd": "${workspaceFolder}",
+                    "executable": "${workspaceFolder}/build/src/wifi_scanner.elf",
+                    "servertype": "openocd",
+                    "serverpath": "${workspaceFolder}/.local/bin/openocd",
+                    "searchDir": ["${workspaceFolder}/.local/share/openocd/scripts"],
+                    "configFiles": [
+                        "interface/cmsis-dap.cfg",
+                        "target/rp2350.cfg"
+                    ],
+                    "openOCDLaunchCommands": ["adapter speed 4000"],
+                    "svdFile": "${workspaceFolder}/deps/pico-sdk/src/rp2350/hardware_regs/rp2350.svd"
+                }
+            ]
+        },
+        "tasks.json": {
+            "version": "2.0.0",
+            "tasks": [
+                {
+                    "label": "Build",
+                    "type": "shell",
+                    "command": "just",
+                    "args": ["build"],
+                    "group": {
+                        "kind": "build",
+                        "isDefault": True
+                    },
+                    "problemMatcher": ["$gcc"]
+                },
+                {
+                    "label": "Clean",
+                    "type": "shell",
+                    "command": "just",
+                    "args": ["clean"],
+                    "problemMatcher": []
+                },
+                {
+                    "label": "Serial Read",
+                    "type": "shell",
+                    "command": "just",
+                    "args": ["serial-read"],
+                    "problemMatcher": [],
+                    "isBackground": True
+                }
+            ]
+        },
+        "settings.json": {
+            "cmake.configureOnOpen": True,
+            "cmake.generator": "Ninja",
+            "cmake.buildDirectory": "${workspaceFolder}/build",
+            "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+            "cortex-debug.openocdPath": "${workspaceFolder}/.local/bin/openocd",
+            "files.associations": {
+                "*.h": "c",
+                "FreeRTOSConfig.h": "c"
+            }
+        },
+        "extensions.json": {
+            "recommendations": [
+                "mkhl.direnv",
+                "ms-vscode.cpptools",
+                "ms-vscode.cmake-tools",
+                "marus25.cortex-debug",
+                "mcu-debug.rtos-views"
+            ]
+        },
+        "c_cpp_properties.json": {
+            "version": 4,
+            "configurations": [
+                {
+                    "name": "Pico 2 W (ARM)",
+                    "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+                    "includePath": [
+                        "${workspaceFolder}/src/**",
+                        "${workspaceFolder}/deps/pico-sdk/**",
+                        "${workspaceFolder}/deps/FreeRTOS-Kernel/include"
+                    ],
+                    "defines": [
+                        "PICO_BOARD=pico2_w",
+                        "PICO_RP2350=1"
+                    ],
+                    "intelliSenseMode": "gcc-arm",
+                    "cStandard": "c11",
+                    "cppStandard": "c++23"
+                },
+                {
+                    "name": "Host Tests",
+                    "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+                    "includePath": [
+                        "${workspaceFolder}/test/**",
+                        "${workspaceFolder}/src/**"
+                    ],
+                    "intelliSenseMode": "linux-gcc-x64",
+                    "cStandard": "c11",
+                    "cppStandard": "c++23"
+                }
+            ]
+        }
+    }
 
 
 class SetupStatus:
@@ -132,23 +261,27 @@ def install_extensions(status: SetupStatus, has_code_cli: bool) -> None:
 
 
 def check_vscode_config(status: SetupStatus) -> None:
-    """Check VSCode configuration files."""
+    """Check and create VSCode configuration files."""
     print("\nChecking VSCode configuration...")
 
-    config_files = [
-        ".vscode/launch.json",
-        ".vscode/tasks.json",
-        ".vscode/settings.json",
-        ".vscode/extensions.json",
-        ".vscode/c_cpp_properties.json",
-    ]
-
     project_dir = get_project_dir()
-    for config in config_files:
-        if (project_dir / config).exists():
-            status.ok(config)
+    vscode_dir = project_dir / ".vscode"
+    configs = get_vscode_configs()
+
+    # Create .vscode directory if needed
+    if not vscode_dir.exists():
+        vscode_dir.mkdir(parents=True)
+        status.ok(".vscode directory created")
+
+    for filename, content in configs.items():
+        config_path = vscode_dir / filename
+        if config_path.exists():
+            status.ok(f".vscode/{filename}")
         else:
-            status.err(f"{config} missing")
+            # Create the missing config file
+            with open(config_path, "w") as f:
+                json.dump(content, f, indent=4)
+            status.ok(f".vscode/{filename} (created)")
 
     # Check compile_commands.json exists (generated by CMake)
     compile_commands = project_dir / "build" / "compile_commands.json"
