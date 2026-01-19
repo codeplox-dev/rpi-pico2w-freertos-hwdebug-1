@@ -19,7 +19,7 @@ namespace wifi {
  *
  * Must be called before starting the scanner task.
  */
-bool init();
+[[nodiscard]] bool init();
 
 /**
  * @brief Start the WiFi scanner task.
@@ -27,7 +27,7 @@ bool init();
  *
  * The task waits for scan requests triggered by request_scan().
  */
-bool start_scanner_task();
+[[nodiscard]] bool start_scanner_task();
 
 /**
  * @brief Request a synchronous WiFi scan.
@@ -38,7 +38,7 @@ bool start_scanner_task();
  * Blocks until scan completes or timeout expires.
  * LED blinks during scan, stops when complete.
  */
-bool request_scan(ScanResult* result, uint32_t timeout_ms = 30000);
+[[nodiscard]] bool request_scan(ScanResult* result, uint32_t timeout_ms = 30000);
 
 } // namespace wifi
 

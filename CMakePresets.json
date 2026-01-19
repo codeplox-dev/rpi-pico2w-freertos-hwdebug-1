@@ -1,0 +1,32 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "Pico 2 W (ARM)",
+            "description": "Build for Raspberry Pi Pico 2 W",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "PICO_BOARD": "pico2_w"
+            },
+            "environment": {
+                "PICO_SDK_PATH": "${sourceDir}/deps/pico-sdk",
+                "FREERTOS_KERNEL_PATH": "${sourceDir}/deps/FreeRTOS-Kernel"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default"
+        }
+    ]
+}

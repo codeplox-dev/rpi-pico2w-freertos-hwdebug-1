@@ -1,113 +1,71 @@
-# Pico 2 W WiFi Scanner - Pico SDK + FreeRTOS
+# Pico 2 W WiFi Scanner - Build and Development
+
+pico_sdk_version := "2.2.0"
+project_dir := justfile_directory()
+
+# SDK paths (override any conflicting environment variables)
+export PICO_SDK_PATH := project_dir / "deps/pico-sdk"
+export FREERTOS_KERNEL_PATH := project_dir / "deps/FreeRTOS-Kernel"
 
 default:
     @just --list
 
 # =============================================================================
-# Environment Setup
+# Setup
 # =============================================================================
 
 # Setup development environment (SDK, FreeRTOS, OpenOCD)
-envsetup: setup-sdk setup-openocd
+setup:
+    ./tools/setup_sdk.py --sdk-version {{pico_sdk_version}}
+    ./tools/setup_openocd.py
 
-# Setup Pico SDK and FreeRTOS Kernel
-setup-sdk:
-    python3 ./tools/setup_sdk.py
-
-# Build OpenOCD from source (required for RP2350 support)
-setup-openocd:
-    python3 ./tools/setup_openocd.py
-
-# Setup VSCode IDE (extensions and configuration)
-idesetup:
-    python3 ./tools/setup_ide.py
+# Setup VSCode IDE
+setup-vscode:
+    ./tools/setup_vscode.py
 
 # =============================================================================
 # Build & Flash
 # =============================================================================
 
-# Configure CMake build
-configure:
-    cmake -B build -G Ninja
-
 # Build the application
-build: configure
+build:
+    cmake --preset default
     cmake --build build
 
-# Build and flash
+# Flash firmware to target
+flash:
+    ./tools/pico.py flash
+
+# Build and flash (main development workflow)
 run: build flash
 
-# Flash to target via debug probe
-flash:
-    python3 ./tools/flash.py
-
-# Reset the target
-reset:
-    python3 ./tools/flash.py reset
-
 # =============================================================================
-# Serial Console
+# Serial
 # =============================================================================
 
-# List available serial devices
-serial-list:
-    python3 ./tools/serial_util.py list
-
-# Open interactive console (Ctrl+A Ctrl+X to exit)
-console:
-    python3 ./tools/serial_util.py console
-
-# Capture serial output for specified duration (default 5s)
-capture duration="5":
-    python3 ./tools/serial_util.py capture /dev/ttyACM1 {{duration}}
+# Read serial output (forever if no duration, or for N seconds)
+serial-read duration="":
+    ./tools/pico.py serial-read {{duration}}
 
 # =============================================================================
 # Testing
 # =============================================================================
 
-# Build and run unit tests (host-side, no hardware)
-unit-test:
-    cmake -B build/test -S test -G Ninja
-    cmake --build build/test
-    ./build/test/test_unit
-
-# Build and run integration tests (with mocks)
-integration-test:
-    cmake -B build/test -S test -G Ninja
-    cmake --build build/test
-    ./build/test/test_integration
-
 # Run all tests
-test: unit-test integration-test
-
-# =============================================================================
-# Code Quality
-# =============================================================================
-
-# Run C++ linters (cppcheck, clang-tidy)
-lint:
-    @echo "Running cppcheck..."
-    cppcheck --enable=warning,style,performance --error-exitcode=1 \
-        --suppress=missingIncludeSystem \
-        -I src src/*.cpp src/*.hpp 2>&1 || true
-    @echo ""
-    @echo "Running clang-tidy..."
-    clang-tidy src/*.cpp src/*.hpp \
-        --checks='-*,readability-*,bugprone-*,modernize-*,performance-*' \
-        --warnings-as-errors='' \
-        -- -std=c++17 -I src 2>&1 || true
-
-# Run all checks (lint + tests)
-check: lint test
+test:
+    cmake --preset default -S test
+    cmake --build build/test
+    ctest --test-dir build/test --output-on-failure
 
 # =============================================================================
 # Cleanup
 # =============================================================================
 
-# Clean build artifacts
+# Clean build artifacts and caches
 clean:
-    rm -rf build
+    -./tools/pico.py openocd stop 2>/dev/null
+    rm -rf build .pytest_cache .cache tools/__pycache__ .local/run
 
-# Remove all generated content (SDK, FreeRTOS, OpenOCD, build)
+# Clean everything (SDK, OpenOCD, build)
 distclean: clean
     rm -rf deps .local pico_sdk_import.cmake FreeRTOS_Kernel_import.cmake

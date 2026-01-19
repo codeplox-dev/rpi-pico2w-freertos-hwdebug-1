@@ -1,31 +1,16 @@
 #!/usr/bin/env python3
-"""Setup Pico SDK and FreeRTOS Kernel (Raspberry Pi fork)."""
+"""Setup Pico SDK, FreeRTOS Kernel, and picotool."""
 
+import argparse
 import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 
-PICO_SDK_VERSION = "2.2.0"
-
-
-def get_project_dir() -> Path:
-    """Get the project root directory."""
-    return Path(__file__).parent.parent.resolve()
+from common import get_project_dir, get_deps_dir, get_local_dir, run_cmd
 
 
-def get_deps_dir() -> Path:
-    """Get the dependencies directory."""
-    return get_project_dir() / "deps"
-
-
-def run_cmd(cmd: list, cwd: Path = None, check: bool = True) -> subprocess.CompletedProcess:
-    """Run a command and return the result."""
-    return subprocess.run(cmd, cwd=cwd, check=check)
-
-
-def clone_pico_sdk() -> bool:
+def clone_pico_sdk(version: str) -> bool:
     """Clone the Pico SDK if not already present."""
     deps_dir = get_deps_dir()
     sdk_dir = deps_dir / "pico-sdk"
@@ -34,10 +19,10 @@ def clone_pico_sdk() -> bool:
         print(f"Pico SDK already exists at {sdk_dir}")
         return True
 
-    print(f"Cloning Pico SDK v{PICO_SDK_VERSION}...")
+    print(f"Cloning Pico SDK v{version}...")
     run_cmd([
         "git", "clone", "--depth", "1",
-        "--branch", PICO_SDK_VERSION,
+        "--branch", version,
         "https://github.com/raspberrypi/pico-sdk.git"
     ], cwd=deps_dir)
 
@@ -62,6 +47,59 @@ def clone_freertos_kernel() -> bool:
         "https://github.com/raspberrypi/FreeRTOS-Kernel.git"
     ], cwd=deps_dir)
 
+    return True
+
+
+def build_picotool(version: str) -> bool:
+    """Build and install picotool to .local/bin."""
+    local_dir = get_local_dir()
+    deps_dir = get_deps_dir()
+    picotool_dir = deps_dir / "picotool"
+    picotool_bin = local_dir / "bin" / "picotool"
+
+    # Check if already installed with correct version
+    if picotool_bin.exists():
+        result = subprocess.run(
+            [str(picotool_bin), "version"],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0 and version in result.stdout:
+            print(f"picotool {version} already installed at {picotool_bin}")
+            return True
+        print(f"Updating picotool to version {version}...")
+        shutil.rmtree(picotool_dir, ignore_errors=True)
+
+    # Clone picotool
+    if not picotool_dir.exists():
+        print(f"Cloning picotool v{version}...")
+        run_cmd([
+            "git", "clone", "--depth", "1",
+            "--branch", version,
+            "https://github.com/raspberrypi/picotool.git"
+        ], cwd=deps_dir)
+
+    # Build picotool
+    print("Building picotool...")
+    build_dir = picotool_dir / "build"
+    build_dir.mkdir(exist_ok=True)
+
+    sdk_path = deps_dir / "pico-sdk"
+
+    # Pass SDK path directly to cmake to avoid environment variable conflicts
+    subprocess.run([
+        "cmake", "-B", str(build_dir), "-G", "Ninja",
+        f"-DCMAKE_INSTALL_PREFIX={local_dir}",
+        f"-DPICO_SDK_PATH={sdk_path}",
+        "-DPICOTOOL_NO_LIBUSB=1",  # Don't require libusb for basic functionality
+    ], cwd=picotool_dir, check=True)
+
+    subprocess.run(["cmake", "--build", str(build_dir)], cwd=picotool_dir, check=True)
+
+    # Install picotool
+    print("Installing picotool...")
+    run_cmd(["cmake", "--install", str(build_dir)], cwd=picotool_dir, check=True)
+
+    print(f"  Installed picotool to {picotool_bin}")
     return True
 
 
@@ -95,18 +133,31 @@ def copy_cmake_imports() -> bool:
 
 def main() -> int:
     """Main entry point."""
+    parser = argparse.ArgumentParser(description="Setup Pico SDK, FreeRTOS Kernel, and picotool")
+    parser.add_argument("--sdk-version", required=True, help="Pico SDK version (e.g., 2.2.0)")
+    parser.add_argument("--picotool-version", default=None, help="picotool version (defaults to SDK version)")
+    args = parser.parse_args()
+
+    # Default picotool version to SDK version
+    picotool_version = args.picotool_version or args.sdk_version
+
     deps_dir = get_deps_dir()
     deps_dir.mkdir(parents=True, exist_ok=True)
 
+    local_dir = get_local_dir()
+    (local_dir / "bin").mkdir(parents=True, exist_ok=True)
+
     try:
-        clone_pico_sdk()
+        clone_pico_sdk(args.sdk_version)
         clone_freertos_kernel()
+        build_picotool(picotool_version)
         copy_cmake_imports()
 
         print()
         print("SDK setup complete!")
         print(f"  Pico SDK:        {deps_dir / 'pico-sdk'}")
         print(f"  FreeRTOS Kernel: {deps_dir / 'FreeRTOS-Kernel'}")
+        print(f"  picotool:        {local_dir / 'bin' / 'picotool'}")
         return 0
 
     except subprocess.CalledProcessError as e:

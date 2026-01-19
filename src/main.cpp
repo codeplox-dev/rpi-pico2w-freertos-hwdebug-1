@@ -31,7 +31,7 @@ void print_ap(const APInfo& ap) {
     ap.format_bssid(bssid_str, sizeof(bssid_str));
 
     printf("  %-32s  %s  ch%2u  %4ddBm  %s\n",
-           ap.ssid,
+           ap.ssid.data(),
            bssid_str,
            ap.channel,
            ap.rssi,
@@ -90,7 +90,7 @@ bool init_wifi() {
  * @brief Main console task.
  */
 void main_task(void* params) {
-    (void)params;
+    static_cast<void>(params);
 
     print_banner();
 

@@ -1,0 +1,30 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "Default",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/../build/test",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
+}

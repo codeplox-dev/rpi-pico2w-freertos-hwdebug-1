@@ -1,23 +1,22 @@
 # Pico 2 W WiFi Scanner
 
-WiFi scanner for Raspberry Pi Pico 2 W using Pico SDK and FreeRTOS.
+WiFi scanner for Raspberry Pi Pico 2 W using Pico SDK and FreeRTOS. Scans for nearby networks every 20 seconds, blinking the LED during scans. Results output to USB serial.
 
-**Behavior:**
-- Starts scanning immediately on power-up (no console connection required)
-- Scans for nearby WiFi networks every 20 seconds
-- LED solid ON when idle, blinks rapidly during active scans
-- Results output to USB serial if connected; otherwise discarded (no buffering)
+## Hardware Setup
+
+![Hardware setup showing Pico 2 W and Debug Probe](doc/hardware-setup.jpg)
+
+Connect both devices to your workstation via USB:
+
+- **Pico 2 W** (right): USB provides power and serial output for scan results
+- **Debug Probe** (left): USB provides debug interface for flashing and debugging
+
+The 3-wire debug cable connects the Debug Probe's **D** (debug) port to the Pico's **Debug** port. The Debug Probe's **U** (UART) port is left unconnected—we use the Pico's native USB for serial output, which simplifies field deployment since only one cable is needed for normal operation.
 
 ## Requirements
 
-**Hardware:**
-- Raspberry Pi Pico 2 W
-- Raspberry Pi Debug Probe (or CMSIS-DAP debugger)
-- USB cables for both debug probe and Pico
-
-**Software:**
-- Linux host with Nix (flakes enabled)
-- direnv (recommended)
+- Raspberry Pi Pico 2 W + Debug Probe (or any CMSIS-DAP debugger)
+- Linux with Nix (flakes enabled) and direnv — see **[Nix Environment Guide](doc/nix-environment.md)** for setup and portability
 
 ## Quick Start
 
@@ -26,51 +25,26 @@ WiFi scanner for Raspberry Pi Pico 2 W using Pico SDK and FreeRTOS.
 git clone <repo-url>
 cd rpi-pico2w-freertos-hwdebug-1
 
-# Allow direnv (loads nix environment automatically)
+# Load nix environment
 direnv allow
 
-# First-time setup: clone SDK, FreeRTOS, build OpenOCD
-just envsetup
+# First-time setup (SDK, FreeRTOS, OpenOCD)
+just setup
 
 # Build and flash
 just run
 
-# View output (Ctrl+A Ctrl+X to exit)
-just console
-
-# End-to-end test: build, flash, capture 25s of output (default is 5 if not overridden)
-just run capture 25
+# Read serial output (Ctrl+C to stop)
+just serial-read
 ```
 
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `just envsetup` | First-time setup (SDK, FreeRTOS, OpenOCD) |
-| `just build` | Build the application |
-| `just flash` | Flash to device via debug probe |
-| `just run` | Build and flash |
-| `just console` | Interactive serial console |
-| `just capture` | Capture serial output (default 5s) |
-| `just capture 30` | Capture for 30 seconds |
-| `just serial-list` | List serial devices with details |
-| `just test` | Run all tests (unit + integration) |
-| `just lint` | Run C++ linters (cppcheck, clang-tidy) |
-| `just check` | Run lint + tests |
-| `just idesetup` | Setup VS Code (extensions, config) |
-| `just clean` | Remove build artifacts |
-| `just distclean` | Remove all generated content |
-
-## Serial Output
+### Example Output
 
 ```
 ========================================
   Pico 2 W WiFi Scanner
   FreeRTOS + CYW43
 ========================================
-
-Initializing WiFi...
-WiFi initialized.
 
 Scanning every 20 seconds...
 --- Starting scan ---
@@ -83,71 +57,61 @@ Scanning every 20 seconds...
   Found 2 networks
 ```
 
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `just setup` | First-time setup (SDK, FreeRTOS, OpenOCD) |
+| `just build` | Build the application |
+| `just flash` | Flash to device via debug probe |
+| `just run` | Build and flash |
+| `just serial-read` | Read serial output (Ctrl+C to stop) |
+| `just serial-read N` | Read for N seconds |
+| `just test` | Run host tests |
+| `just clean` | Remove build artifacts |
+
+## VSCode Debugging
+
+```bash
+just setup-vscode   # Install extensions and verify configuration
+just build          # Required for IntelliSense
+```
+
+Open the project in VSCode, then press **F5** to start debugging. The **Debug** configuration builds, flashes, and halts at `main()`. Use **Attach** to connect to an already-running target without flashing.
+
+For serial output while debugging, run `just serial-read` in the integrated terminal—it automatically resumes the target if halted.
+
+See **[VSCode Debugging Guide](doc/vscode-debugging.md)** for detailed setup, RTOS task inspection, peripheral register views, and troubleshooting.
+
 ## Architecture
 
-The application uses FreeRTOS with two tasks:
+Two FreeRTOS tasks coordinate scanning:
 
-- **Main task**: Requests scans every 20 seconds (using tickless idle), prints results
-- **Scanner task**: Performs WiFi scans when requested, blinks LED during scan
-
-```
-Main Task                          Scanner Task
-    │                                   │
-    ├── request_scan() ────────────────▶│
-    │   (semaphore)                     ├── LED blink (fast)
-    │                                   ├── cyw43_wifi_scan()
-    │                                   ├── collect results
-    │◀──────────────────────────────────┤
-    │   (semaphore + result)            └── LED solid on
-    ├── print results
-    └── vTaskDelay (20s, tickless)
-```
+- **Main task**: Requests scans every 20 seconds, prints results to serial
+- **Scanner task**: Performs WiFi scans, blinks LED during scan
 
 ## Project Structure
 
 ```
-.
-├── src/
-│   ├── main.cpp           # Main task, console output
-│   ├── wifi_scanner.cpp   # Scanner task, CYW43 interface
-│   ├── wifi_scanner.hpp   # Scanner API
-│   ├── scan_msg.hpp       # Result structures (APInfo, ScanResult)
-│   ├── led.cpp            # LED control via FreeRTOS timer
-│   ├── led.hpp            # LED API
-│   ├── FreeRTOSConfig.h   # FreeRTOS configuration
-│   ├── lwipopts.h         # lwIP configuration
-│   └── CMakeLists.txt     # Application build config
-├── tools/
-│   ├── setup_sdk.py       # Clone Pico SDK and FreeRTOS
-│   ├── setup_openocd.py   # Build OpenOCD from source
-│   ├── flash.py           # Flash via debug probe
-│   └── serial_util.py     # Serial console utilities
-├── CMakeLists.txt         # Top-level CMake config
-├── justfile               # Build commands
-└── flake.nix              # Nix development environment
+src/                  # Application source
+test/                 # Host-side unit and integration tests
+tools/                # Build and flash utilities
+.vscode/              # Debug configurations and tasks
+flake.nix             # Nix development environment
+justfile              # Command runner
 ```
 
 ## Troubleshooting
 
-**No serial output:**
-1. Check device exists: `just serial-list`
-2. Ensure Pico USB is connected (not just debug probe)
-3. Wait a few seconds after flash for USB enumeration
+**No serial output:** Ensure Pico USB is connected (not just debug probe). Wait a few seconds after flash for USB enumeration.
 
-**Flash fails:**
-1. Check debug probe: `lsusb | grep -i "debug probe"`
-2. Verify OpenOCD: `.local/bin/openocd --version`
-3. Rebuild OpenOCD: `just setup-openocd`
+**Flash fails:** Check debug probe connection. Rebuild OpenOCD with `just setup` if needed.
 
-**Build errors:**
-1. Ensure nix environment is active: `echo $PICO_SDK_PATH`
-2. Re-run setup: `just envsetup`
-3. Clean rebuild: `just clean && just build`
+**IntelliSense errors:** Run `just build` to generate `compile_commands.json`, then reload VSCode.
 
 ## Technical Details
 
 - **MCU:** RP2350 (dual Cortex-M33, 150 MHz)
-- **WiFi:** CYW43439 (via `pico_cyw43_arch_lwip_sys_freertos`)
-- **RTOS:** FreeRTOS with tickless idle
-- **SDK:** Pico SDK 2.1.0+
-- **OpenOCD:** Built from source (RP2350 support)
+- **WiFi:** CYW43439 via FreeRTOS lwIP integration
+- **SDK:** Pico SDK 2.2.0, FreeRTOS with tickless idle
+- **Debug:** OpenOCD (built from source for RP2350 support)

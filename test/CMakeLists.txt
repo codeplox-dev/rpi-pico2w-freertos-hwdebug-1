@@ -4,8 +4,11 @@
 cmake_minimum_required(VERSION 3.13)
 project(wifi_scanner_tests CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Enable CTest for VSCode CMake Tools integration
+enable_testing()
 
 # Unit tests - pure logic, no dependencies
 add_executable(test_unit
@@ -31,3 +34,7 @@ foreach(target test_unit test_integration)
         -Wall -Wextra -Wpedantic
     )
 endforeach()
+
+# Register tests with CTest
+add_test(NAME unit_tests COMMAND test_unit)
+add_test(NAME integration_tests COMMAND test_integration)

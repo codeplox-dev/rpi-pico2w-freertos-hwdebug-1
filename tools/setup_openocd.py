@@ -2,28 +2,10 @@
 """Build OpenOCD from source (required for RP2350 support)."""
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
-
-def get_project_dir() -> Path:
-    """Get the project root directory."""
-    return Path(__file__).parent.parent.resolve()
-
-
-def get_local_dir() -> Path:
-    """Get the .local directory for local installations."""
-    return get_project_dir() / ".local"
-
-
-def run_cmd(cmd: list, cwd: Path = None, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess:
-    """Run a command and return the result."""
-    kwargs = {"cwd": cwd, "check": check}
-    if capture:
-        kwargs["capture_output"] = True
-        kwargs["text"] = True
-    return subprocess.run(cmd, **kwargs)
+from common import get_local_dir, run_cmd
 
 
 def get_nproc() -> int:
