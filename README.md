@@ -1,8 +1,12 @@
-# Pico 2 W WiFi Scanner
+# Pico 2 W FreeRTOS w/ Debug Probe
 
-WiFi scanner for Raspberry Pi Pico 2 W using Pico SDK and FreeRTOS. Scans for nearby networks every 20 seconds, blinking the LED during scans. Results output to USB serial.
+This project demonstrates project setup and tooling for the Pico 2 W running FreeRTOS. It uses the [Official Debug Probe])(https://www.raspberrypi.com/documentation/microcontrollers/debug-probe.html) for flashing and hardware debugging. Note that you can use this build system without the dedicated debugger by building a `.uf2` file and copying it to the Pico's storage, but the specifics of this are left to the interested reader.
 
-## Hardware Setup
+The project can be used from the CLI entirely, but there is also support for setting up VSCode for debugging.
+
+The business logic of this simple system scans WiFi in a continuous loop every 20 seconds, blinking the LED during scans. The results are written as text to USB serial. RTT is used through the debug probe to send debug messages to the developer. 
+
+## Pico Hardware Setup
 
 ![Hardware setup showing Pico 2 W and Debug Probe](doc/hardware-setup.jpg)
 
@@ -13,7 +17,7 @@ Connect both devices to your workstation via USB:
 
 The 3-wire debug cable connects the Debug Probe's **D** (debug) port to the Pico's **Debug** port. The Debug Probe's **U** (UART) port is left unconnected—we use the Pico's native USB for serial output, which simplifies field deployment since only one cable is needed for normal operation.
 
-## Software Setup
+## Workstation Software Setup
 
 The portable Nix environment and toolchain setup scripts in `tools/` provide a consistent native runtime environment across platforms. The system is tested on macOS with Apple Silicon, Linux amd64, and Raspberry Pi 64-bit running Raspbian Bookworm or Ubuntu 24.10.
 
