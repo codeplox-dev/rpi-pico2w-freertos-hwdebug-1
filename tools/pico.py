@@ -97,21 +97,29 @@ def wait_for_pico(timeout: float = 5.0) -> Optional[str]:
     return device  # Return last found device even if not fully stable
 
 
-def get_serial_device(wait: bool = True) -> Optional[str]:
+def get_serial_device(wait: bool = True) -> tuple[Optional[str], Optional[str]]:
     """Get serial device, with optional wait for Pico.
 
-    Returns None if no Pico CDC device found (e.g., when debugging).
+    Returns (device, error) tuple. If device is None, error explains why.
     """
     if wait:
         print("Waiting for Pico USB CDC...", file=sys.stderr)
         device = wait_for_pico(5.0)
         if device:
-            return device
+            return device, None
     else:
         device = find_pico_device()
         if device and os.path.exists(device) and os.access(device, os.R_OK | os.W_OK):
-            return device
-    return None
+            return device, None
+
+    # Check if device exists but we lack permissions
+    device = find_pico_device()
+    if device and os.path.exists(device):
+        if not os.access(device, os.R_OK | os.W_OK):
+            return None, f"Permission denied for {device}. Add your user to the 'dialout' group: sudo usermod -aG dialout $USER"
+        return None, f"Device {device} found but not accessible"
+
+    return None, None  # Device not found
 
 
 # =============================================================================
@@ -548,14 +556,17 @@ def cmd_serial_read(duration: Optional[int] = None, device: Optional[str] = None
             print(f"Error: Device {device} not found", file=sys.stderr)
             return 1
     else:
-        device = get_serial_device(wait=True)
+        device, error = get_serial_device(wait=True)
         if not device:
-            print("Error: Pico USB CDC not found", file=sys.stderr)
-            print("", file=sys.stderr)
-            print("Ensure:", file=sys.stderr)
-            print("  1. Pico is connected via USB (not just debug probe)", file=sys.stderr)
-            print("  2. Firmware has been flashed: just run", file=sys.stderr)
-            print("  3. Wait a few seconds after flash for USB enumeration", file=sys.stderr)
+            if error:
+                print(f"Error: {error}", file=sys.stderr)
+            else:
+                print("Error: Pico USB CDC not found", file=sys.stderr)
+                print("", file=sys.stderr)
+                print("Ensure:", file=sys.stderr)
+                print("  1. Pico is connected via USB (not just debug probe)", file=sys.stderr)
+                print("  2. Firmware has been flashed: just run", file=sys.stderr)
+                print("  3. Wait a few seconds after flash for USB enumeration", file=sys.stderr)
             return 1
 
     try:
