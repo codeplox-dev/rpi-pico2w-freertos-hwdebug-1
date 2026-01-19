@@ -103,9 +103,11 @@ justfile              # Command runner
 
 ## Troubleshooting
 
+**Build fails:** After setting up Nix and direnv, you must execute `just setup` to set up the build environment.
+
 **No serial output:** Ensure Pico USB is connected (not just debug probe). Wait a few seconds after flash for USB enumeration.
 
-**Flash fails:** Check debug probe connection. Rebuild OpenOCD with `just setup` if needed.
+**Flash fails:** Check debug probe connection.
 
 **IntelliSense errors:** Run `just build` to generate `compile_commands.json`, then reload VSCode.
 
