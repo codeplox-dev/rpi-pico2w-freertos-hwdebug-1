@@ -23,13 +23,7 @@ At boot, the RP2350 can enable:
 The Cortex-M33 cores offer:
 - **Hardware floating-point**: Single-precision FPU plus simplified double-precision (add, subtract, multiply, divide, square root)
 - **DSP instructions**: Useful for signal processing
-- **Better performance**: 4.09 vs 3.81 CoreMark/MHz compared to Hazard3
 - **Mature tooling**: GCC, GDB, and debugger support is well-established
-
-The Hazard3 RISC-V cores are suitable for:
-- Projects prioritizing open-source ISA
-- Integer-only workloads
-- Educational/experimental RISC-V development
 
 ### Current Core Usage
 
@@ -50,45 +44,6 @@ Core 1 remains idle. FreeRTOS SMP mode (`configNUMBER_OF_CORES = 2`) could enabl
 | SRAM | 520 KB | Includes 8 KB of ECC-protected memory |
 | Flash | 4 MB | External QSPI (on Pico 2 W) |
 | ROM | 32 KB | Bootloader and utility functions |
-
-## Programmable I/O (PIO)
-
-The RP2350 has **3 PIO blocks** (up from 2 on RP2040), each containing:
-- 4 state machines
-- 32 instruction slots
-- 8 IRQ flags
-
-**Total: 12 state machines** for implementing custom protocols in hardware.
-
-### PIO Capabilities
-
-- Executes custom digital protocols with cycle-accurate timing
-- 9 instructions: JMP, WAIT, IN, OUT, PUSH, PULL, MOV, IRQ, SET
-- Each instruction takes exactly 1 clock cycle
-- DMA integration for zero-CPU-overhead data transfer
-- New in RP2350: FIFOs usable as random-access memory, cross-PIO interrupts
-
-### PIO Use Cases
-
-This project does not currently use PIO, but it would be well-suited for:
-
-| Use Case | Description |
-|----------|-------------|
-| **WS2812/NeoPixel LEDs** | RGB status indicators instead of single LED blink; ~10 lines of PIO assembly for the 800 kHz protocol |
-| **Display output** | SPI display for showing scan results, or VGA output via PIO-generated sync signals |
-| **Quadrature encoders** | Hardware edge detection without missing pulses |
-| **Custom protocols** | SDIO slave, MDIO, proprietary sensor interfaces |
-| **High-speed I/O** | Demonstrated 900 Mb/s sensor data transfer without CPU load |
-
-### Getting Started with PIO
-
-The SDK includes a PIO assembler. Create a `.pio` file and add to CMakeLists.txt:
-
-```cmake
-pico_generate_pio_header(your_target ${CMAKE_CURRENT_LIST_DIR}/your_program.pio)
-```
-
-See [raspberrypi/pico-examples/pio/](https://github.com/raspberrypi/pico-examples/tree/master/pio) for examples including WS2812 and UART implementations.
 
 ## Wireless (Pico 2 W)
 
@@ -119,6 +74,33 @@ The RP2350 on 40nm process uses less power than the RP2040:
 - **Dormant**: Lower still with RTC wakeup
 
 This project uses FreeRTOS tickless idle (`configUSE_TICKLESS_IDLE = 1`) to reduce power during idle periods.
+
+## Programmable I/O (PIO)
+
+The RP2350 has **3 PIO blocks** (up from 2 on RP2040), each containing:
+- 4 state machines
+- 32 instruction slots
+- 8 IRQ flags
+
+**Total: 12 state machines** for implementing custom protocols in hardware.
+
+### PIO Capabilities
+
+- Executes custom digital protocols with cycle-accurate timing
+- 9 instructions: JMP, WAIT, IN, OUT, PUSH, PULL, MOV, IRQ, SET
+- Each instruction takes exactly 1 clock cycle
+- DMA integration for zero-CPU-overhead data transfer
+- New in RP2350: FIFOs usable as random-access memory, cross-PIO interrupts
+
+### Getting Started with PIO
+
+These are not used in the current project but are a powerful capability that should be tried at some point. The SDK includes a PIO assembler. Create a `.pio` file and add to CMakeLists.txt:
+
+```cmake
+pico_generate_pio_header(your_target ${CMAKE_CURRENT_LIST_DIR}/your_program.pio)
+```
+
+See [raspberrypi/pico-examples/pio/](https://github.com/raspberrypi/pico-examples/tree/master/pio) for examples including WS2812 and UART implementations.
 
 ## References
 
