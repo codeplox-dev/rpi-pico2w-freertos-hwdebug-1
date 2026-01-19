@@ -58,7 +58,7 @@
 
             if [ ! -d deps/pico-sdk ]; then
               echo ""
-              echo "Run 'just envsetup' to initialize SDK and OpenOCD"
+              echo "Run 'just setup' to initialize SDK and OpenOCD"
               echo ""
             fi
           '';
