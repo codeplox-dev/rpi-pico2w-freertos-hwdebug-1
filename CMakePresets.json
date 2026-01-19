@@ -12,6 +12,7 @@
             "description": "Build for Raspberry Pi Pico 2 W",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build",
+            "toolchainFile": "${sourceDir}/deps/pico-sdk/cmake/preload/toolchains/pico_arm_cortex_m33_gcc.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",

@@ -13,10 +13,16 @@ Connect both devices to your workstation via USB:
 
 The 3-wire debug cable connects the Debug Probe's **D** (debug) port to the Pico's **Debug** port. The Debug Probe's **U** (UART) port is left unconnected—we use the Pico's native USB for serial output, which simplifies field deployment since only one cable is needed for normal operation.
 
-## Requirements
+## Software Setup
+
+The portable Nix environment and toolchain setup scripts in `tools/` provide a consistent native runtime environment across platforms. The system is tested on macOS with Apple Silicon, Linux amd64, and Raspberry Pi 64-bit running Raspbian Bookworm or Ubuntu 24.10.
+
+Storage requirements: the dedicated Pico tooling and sources total about 600MB. The reusable Nix environment adds about 300MB.
+
+### Requirements
 
 - Raspberry Pi Pico 2 W + Debug Probe (or any CMSIS-DAP debugger)
-- Linux with Nix (flakes enabled) and direnv — see **[Nix Environment Guide](doc/nix-environment.md)** for setup and portability
+- Nix (flakes enabled) and direnv — see **[Nix Environment Guide](doc/nix-environment.md)** for setup and portability
 
 ## Quick Start
 
