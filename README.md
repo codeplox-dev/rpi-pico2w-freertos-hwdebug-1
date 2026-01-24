@@ -79,8 +79,11 @@ Scanning every 20 seconds...
 | `just run` | Build and flash |
 | `just serial-read` | Read serial output (Ctrl+C to stop) |
 | `just serial-read N` | Read for N seconds |
+| `just rtt-read` | Read RTT debug output via debug probe |
+| `just rtt-read N` | Read RTT for N seconds |
 | `just test` | Run host tests |
-| `just clean` | Remove build artifacts |
+| `just stop` | Stop running debug sessions (openocd, gdb) |
+| `just clean` | Stop debug sessions and remove build artifacts |
 
 ## VSCode Debugging
 
@@ -102,16 +105,19 @@ Two FreeRTOS tasks coordinate scanning:
 - **Main task**: Requests scans every 20 seconds, prints results to serial
 - **Scanner task**: Performs WiFi scans, blinks LED during scan
 
-## Project Structure
+## RTT Debugging
 
-```
-src/                  # Application source
-test/                 # Host-side unit and integration tests
-tools/                # Build and flash utilities
-.vscode/              # Debug configurations and tasks
-flake.nix             # Nix development environment
-justfile              # Command runner
-```
+RTT (Real-Time Transfer) provides fast debug output through the debug probe without requiring a USB serial connection. While serial output (`just serial-read`) shows application messages like scan results, RTT output (`just rtt-read`) shows timestamped debug logs useful during development.
+
+**Message path:** Application code calls `DBG_INFO()`, `DBG_WARN()`, or `DBG_ERROR()` macros from `debug_log.hpp`. These expand to `printf()` calls, which the Pico SDK routes to all enabled stdio drivers—USB, UART, and RTT. The RTT driver writes to a circular buffer in target RAM. OpenOCD polls this buffer through the debug probe's SWD connection and streams the data to a TCP port, which `just rtt-read` connects to and displays.
+
+**Why use RTT:**
+
+- **Debug probe only:** Works when only the debug probe is connected—no need for a second USB cable to the Pico
+- **Continues when halted:** Output keeps flowing even when execution is stopped at a breakpoint
+- **Low overhead:** Writes to RAM are fast and non-blocking, minimizing timing impact on real-time code
+
+To view RTT output, run `just rtt-read` in a terminal while the target is running or being debugged. Both serial and RTT can run simultaneously since they use independent channels.
 
 ## Troubleshooting
 
@@ -131,3 +137,15 @@ justfile              # Command runner
 - **SDK:** Pico SDK 2.2.0, FreeRTOS with tickless idle
 
 See **[Hardware Overview](doc/hardware.md)** for details on the RP2350's dual-architecture cores, PIO capabilities, and power characteristics.
+
+## Tools Used
+
+[Claude Code](https://claude.ai/claude-code) was used interactively throughout this project to:
+
+- Explore FreeRTOS project setup and configuration options
+- Build and troubleshoot the Nix-based toolchain and justfile commands
+- Write and refine documentation
+
+## See Also
+
+**[Rust/Embassy Port Plan](rust-port.md)** — A speculative plan for porting this project to Rust using Embassy, generated with Claude Code. The port has not been implemented.

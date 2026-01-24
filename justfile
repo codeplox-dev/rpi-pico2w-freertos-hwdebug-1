@@ -87,9 +87,13 @@ test:
 # Cleanup
 # =============================================================================
 
+# Stop any running debug sessions (openocd, gdb)
+stop:
+    -pkill -f openocd 2>/dev/null || true
+    -pkill -f arm-none-eabi-gdb 2>/dev/null || true
+
 # Clean build artifacts and caches
-clean:
-    -./tools/pico.py openocd stop 2>/dev/null
+clean: stop
     rm -rf build .pytest_cache .cache tools/__pycache__ .local/run
 
 # Clean everything (SDK, OpenOCD, build)
