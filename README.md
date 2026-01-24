@@ -137,3 +137,15 @@ To view RTT output, run `just rtt-read` in a terminal while the target is runnin
 - **SDK:** Pico SDK 2.2.0, FreeRTOS with tickless idle
 
 See **[Hardware Overview](doc/hardware.md)** for details on the RP2350's dual-architecture cores, PIO capabilities, and power characteristics.
+
+## Tools Used
+
+[Claude Code](https://claude.ai/claude-code) was used interactively throughout this project to:
+
+- Explore FreeRTOS project setup and configuration options
+- Build and troubleshoot the Nix-based toolchain and justfile commands
+- Write and refine documentation
+
+## See Also
+
+**[Rust/Embassy Port Plan](rust-port.md)** — A speculative plan for porting this project to Rust using Embassy, generated with Claude Code. The port has not been implemented.
